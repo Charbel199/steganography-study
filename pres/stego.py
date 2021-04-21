@@ -23,6 +23,8 @@ def compare_images(imageA, imageB, title):
     import cv2
     imageA = cv2.imread(imageA)
     imageB = cv2.imread(imageB)
+
+
     # compute the mean squared error and structural similarity
     # index for the images
     m = mse(imageA, imageB)
@@ -234,6 +236,81 @@ def histogram2(src, src2,withOriginal):
         plt.xlim([0, 256])
     plt.show()
 
+
+
+
+
+def pres(src,dest1,dest2, message):
+    if (not message):
+        with open('message.txt', 'r') as file:
+            message = file.read().replace('\n', '')
+    img = Image.open(src, 'r')
+    width, height = img.size
+    array = np.array(list(img.getdata()))
+
+    if img.mode == 'RGB':
+        n = 3
+    elif img.mode == 'RGBA':
+        n = 4
+
+    total_pixels = array.size//n
+    if(not message):
+        with open('story.txt', 'r') as file:
+            message = file.read().replace('\n', '')
+   # print(message)
+    message += "$t3g0"
+    b_message = ''.join([format(ord(i), "08b") for i in message])
+    req_pixels = len(b_message)
+
+    if req_pixels > total_pixels:
+        print("ERROR: Need larger file size")
+
+    else:
+        index=0
+        for p in range(total_pixels):
+            for q in range(0, 3):
+                if index < req_pixels:
+                    bits = bin(array[p][q])[2:10]
+                    while (len(bits) < 8):
+                        bits = '0' + bits
+                    #print('Before: ',int(bits, 2),'/',bits,' after: ',int(bits[0:7] + b_message[index], 2),'/',bits[0:7] + b_message[index],' message: ',b_message[index])
+
+                    array[p][q] = int(bits[0:7] + b_message[index], 2)
+                    index += 1
+
+        array=array.reshape(height, width, n)
+        enc_img = Image.fromarray(array.astype('uint8'), img.mode)
+        enc_img.save(dest1)
+        print("LSB Image Encoded Successfully")
+
+    import run_stego_algorithm as dct
+    import cv2
+    dct.DCT_ENCRYPT(src,dest2,message)
+    print("DCT Image Encoded Successfully")
+    imgLSB = cv2.imread(dest1)
+    imgDCT = cv2.imread(dest2)
+    cv2.imshow('LSB', imgLSB)
+    cv2.imshow('DCT', imgDCT)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+    print('Getting MSE...')
+    compare_images(src,dest1,'Original vs LSB')
+    compare_images(src, dest2, 'Original vs DCT')
+
+    print('Checking histograms...')
+
+    histogram2(src,dest1,'1')
+    histogram2(src, dest2, '1')
+
+
+    print('Decrypt?')
+    input()
+    Decode(dest1)
+
+
+
 #main function
 def Stego():
     print("--Welcome to $t3g0--")
@@ -244,17 +321,20 @@ def Stego():
     print("5: mse")
     print("6: Histogram")
     print("7: Histogram RGB")
+    print("8: test")
     func = input()
 
     if func == '1':
         print("Enter Source Image Path")
         src = input()
-        print("Enter Message to Hide")
+        print("Enter LSB Image Path")
+        destLSB = input()
+        print("Enter DCT Image Path")
+        destDCT = input()
+        print("Message")
         message = input()
-        print("Enter Destination Image Path")
-        dest = input()
-        print("Encoding...")
-        Encode(src, message, dest)
+        pres(src, destLSB, destDCT, message)
+
 
     elif func == '2':
         print("Enter Source Image Path")
@@ -298,6 +378,18 @@ def Stego():
         withOriginal = input()
         print("Histogram...")
         histogram2(src, src2, withOriginal)
+    elif func == '8':
+        print("Enter Source Image Path")
+        src = input()
+        print("Enter Message to Hide")
+        message = input()
+        print("Enter Destination Image Path")
+        dest = input()
+        print("Encoding...")
+        Encode(src, message, dest)
+
+
+
     else:
         print("ERROR: Invalid option chosen")
 
